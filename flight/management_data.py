@@ -1,5 +1,5 @@
 from django.core.management.base import BaseCommand
-from flights.models import Airport, Flight
+from flight.models import Airport, Flight
 from datetime import datetime, timedelta
 import random
 
