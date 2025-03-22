@@ -1,22 +1,39 @@
-from django.shortcuts import render
-
-# Create your views here.
-from rest_framework import viewsets
-from .models import Airport, Flight
-from .serializers import AirportSerializer, FlightSerializer
+from rest_framework import serializers, viewsets
 from rest_framework.response import Response
 from rest_framework.decorators import action
+from django.shortcuts import get_object_or_404
+from models import Airport, Flight, Passenger, Booking
+from flights.models import Flight
+from passengers.models import Passenger
 
-class AirportViewSet(viewsets.ModelViewSet):
-    queryset = Airport.objects.all()
-    serializer_class = AirportSerializer
+# Serializer for Booking
+class BookingSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Booking
+        fields = '__all__'
 
-class FlightViewSet(viewsets.ModelViewSet):
-    queryset = Flight.objects.all()
-    serializer_class = FlightSerializer
+# API ViewSet for Booking
+class BookingViewSet(viewsets.ModelViewSet):
+    queryset = Booking.objects.all()
+    serializer_class = BookingSerializer
 
-    @action(detail=False, methods=['get'])
-    def delayed_flights(self, request):
-        flights = Flight.objects.filter(status="Delayed")
-        serializer = self.get_serializer(flights, many=True)
-        return Response(serializer.data)
+    @action(detail=False, methods=['post'])
+    def book_flight(self, request):
+        """ API to allow a passenger to book a flight on a specific date with a specified amount. """
+        passenger_id = request.data.get('passenger_id')
+        flight_id = request.data.get('flight_id')
+        ticket_price = request.data.get('ticket_price')
+
+        if not passenger_id or not flight_id or not ticket_price:
+            return Response({"error": "Missing required fields."}, status=400)
+
+        passenger = get_object_or_404(Passenger, id=passenger_id)
+        flight = get_object_or_404(Flight, id=flight_id)
+
+        booking = Booking.objects.create(
+            passenger=passenger,
+            flight=flight,
+            ticket_price=ticket_price
+        )
+
+        return Response({"message": "Booking successful", "booking_id": booking.id}, status=201)
