@@ -1,6 +1,6 @@
-import re
 from django.contrib import admin
-from .models import airport
+from .models import Airport, Airline, Flight
 # Register your models here.
-airport.objects.all()
-admin.site.register(airport) 
+admin.site.register(Airport)
+admin.site.register(Airline)    
+admin.site.register(Flight)

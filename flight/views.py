@@ -1,25 +1,22 @@
 from django.shortcuts import render
-from .models import airport, airline, flight, passenger
+
 # Create your views here.
-class AirportListView(ListView):
-    model = airport
-    template_name = 'flight/airport_list.html'
-    context_object_name = 'airport_list'  
+from rest_framework import viewsets
+from .models import Airport, Flight
+from .serializers import AirportSerializer, FlightSerializer
+from rest_framework.response import Response
+from rest_framework.decorators import action
 
-class FlightListView(ListView):
-    model = flight
-    template_name = 'flight/flight_list.html'
-    context_object_name = 'flight_list'
+class AirportViewSet(viewsets.ModelViewSet):
+    queryset = Airport.objects.all()
+    serializer_class = AirportSerializer
 
-class AirlineListView(ListView):
-    model = airline
-    template_name = 'flight/airline_list.html'
-    context_object_name = 'airline_list'
-    
+class FlightViewSet(viewsets.ModelViewSet):
+    queryset = Flight.objects.all()
+    serializer_class = FlightSerializer
 
-class PassengerListView(ListView):      
-    model = passenger
-    template_name = 'flight/passenger_list.html'
-    context_object_name = 'passenger_list'
-    return render(request, 'flight/passenger_list.html', {'passenger_list': passenger_list})      
-
+    @action(detail=False, methods=['get'])
+    def delayed_flights(self, request):
+        flights = Flight.objects.filter(status="Delayed")
+        serializer = self.get_serializer(flights, many=True)
+        return Response(serializer.data)
