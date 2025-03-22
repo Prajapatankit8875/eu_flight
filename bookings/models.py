@@ -19,3 +19,4 @@ class Booking(models.Model):
 
     def __str__(self):
         return f"{self.passenger.name} - {self.flight.flight_number}"
+    
