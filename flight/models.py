@@ -1,35 +1,63 @@
 from django.db import models
 
-# Create your models here.
+# Airport Model
 class Airport(models.Model):
-    airport_name = models.CharField(max_length=50)
-    iata_code = models.CharField(max_length=10)
-    icao_code = models.CharField(max_length=10)
-    country = models.CharField(max_length=50)
-    city = models.CharField(max_length=50)
+    name = models.CharField(max_length=255)
+    iata_code = models.CharField(max_length=3, unique=True)
+    icao_code = models.CharField(max_length=4, unique=True)
+    country = models.CharField(max_length=100)
+    city = models.CharField(max_length=100)
     latitude = models.FloatField()
     longitude = models.FloatField()
 
-    
-class Airline(models.Model):
-    airline_name = models.CharField(max_length=50)
-    iata_code = models.CharField(max_length=10)
-    icao_code = models.CharField(max_length=10)
-    country = models.CharField(max_length=50)   
+    def __str__(self):
+        return f"{self.name} ({self.iata_code})"
 
-    
-
+# Flight Model
 class Flight(models.Model):
-    flight_number = models.CharField(max_length=10)
-    airline = models.ForeignKey(Airline, on_delete=models.CASCADE)
-    departure_airport = models.ForeignKey(Airport, on_delete=models.CASCADE, related_name='departure_airport')
-    arrival_airport = models.ForeignKey(Airport, on_delete=models.CASCADE, related_name='arrival_airport')
-    departure_time = models.DateTimeField()
-    arrival_time = models.DateTimeField()
-    price_per_ticket = models.FloatField()   
+    flight_number = models.CharField(max_length=10, unique=True)
+    airline = models.CharField(max_length=100)
+    departure_airport = models.ForeignKey(Airport, related_name='departures', on_delete=models.CASCADE)
+    arrival_airport = models.ForeignKey(Airport, related_name='arrivals', on_delete=models.CASCADE)
+    scheduled_departure = models.DateTimeField()
+    actual_departure = models.DateTimeField(null=True, blank=True)
+    scheduled_arrival = models.DateTimeField()
+    actual_arrival = models.DateTimeField(null=True, blank=True)
+    status = models.CharField(max_length=20, choices=[('On Time', 'On Time'), ('Delayed', 'Delayed'), ('Cancelled', 'Cancelled')])
 
-    def delay(self):
-        if self.departure_time > self.arrival_time:
-            return (self.departure_time - self.arrival_time).seconds
-        else:
-            return 0
+    def delay_duration(self):
+        if self.actual_arrival and self.scheduled_arrival:
+            delay = (self.actual_arrival - self.scheduled_arrival).total_seconds() / 3600
+            return delay if delay > 0 else 0
+        return 0
+
+    def __str__(self):
+        return f"{self.flight_number} - {self.departure_airport} to {self.arrival_airport}"
+
+# Passenger Model
+class Passenger(models.Model):
+    name = models.CharField(max_length=255)
+    email = models.EmailField(unique=True)
+    phone = models.CharField(max_length=15)
+
+    def __str__(self):
+        return self.name
+
+# Booking Model
+class Booking(models.Model):
+    passenger = models.ForeignKey(Passenger, on_delete=models.CASCADE, related_name='bookings')
+    flight = models.ForeignKey(Flight, on_delete=models.CASCADE, related_name='bookings')
+    ticket_price = models.DecimalField(max_digits=10, decimal_places=2)
+    booking_date = models.DateTimeField(auto_now_add=True)
+    refunded = models.BooleanField(default=False)
+
+    def check_refund_eligibility(self):
+        if self.flight.delay_duration() > 2 and not self.refunded:
+            return True
+        return False
+
+    def refund_amount(self):
+        return self.ticket_price if self.check_refund_eligibility() else 0
+
+    def __str__(self):
+        return f"{self.passenger.name} - {self.flight.flight_number}"
